@@ -3,7 +3,7 @@ from api.line.schema import CreateLine, Line
 from sqlalchemy import select
 
 
-def create_line(session: AsyncSession, line_in: CreateLine):
+def create_passenger(session: AsyncSession, passenger_in: CreateLine):
     line = Line(**line_in.model_dump())
     session.add(line)
     session.commit()
