@@ -1,10 +1,8 @@
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     async_sessionmaker,
-    async_scoped_session,
+    AsyncSession,
 )
-from sqlalchemy.orm import scoped_session
-from asyncio import current_task
 from core.config import settings
 
 
@@ -15,17 +13,10 @@ class DatabaseHelper:
             bind=self.engine, autoflush=False, autocommit=False, expire_on_commit=False
         )
 
-    def get_scoped_session(self):
-        session = scoped_session(
-            sessionmaker=self.session_factory, scopefunc=current_task
-        )
-        return session
-
-    async def session_dependency(self):
-        session = self.get_scoped_session()
-        async with session() as session:
+    async def session_dependency(self) -> AsyncSession:
+        async with self.session_factory() as session:
             yield session
-            await session.remove()
+            await session.close()
 
 
 db_helper = DatabaseHelper()

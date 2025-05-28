@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class BaseLine(BaseModel):
@@ -6,6 +6,7 @@ class BaseLine(BaseModel):
 
 
 class Line(BaseLine):
+    model_config = ConfigDict(from_attributes=True)
     id: int
 
 

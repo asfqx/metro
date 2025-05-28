@@ -1,25 +1,19 @@
-from fastapi import FastAPI, WebSocket, Depends
-from fastapi.websockets import WebSocketDisconnect
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-import asyncio
-from core.models import Line, Train, Base
-from core.database import db_helper
+from fastapi import FastAPI
+
 import uvicorn
+
+from api import router as api_router
+
+from core.database.database import setup_database
 
 
 async def lifespan(app: FastAPI) -> None:
-    async with db_helper.engine.begin() as con:
-        await con.run_sync(Base.metadata.create_all)
+    await setup_database()
     yield
 
 
 app = FastAPI(lifespan=lifespan)
-
-
-async def get_db() -> AsyncSession:
-    async with db_helper.session_factory() as session:
-        yield session
+app.include_router(api_router)
 
 
 @app.get("/")
