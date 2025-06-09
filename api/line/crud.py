@@ -1,27 +1,22 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from api.line.schema import CreateLine, Line
-from sqlalchemy import select
+from api.line.schema import CreateLine, Line as SchemaLine
+from sqlalchemy import select, Result
+from core.models.lines import Line
+from typing import Optional
 
 
-def create_line(session: AsyncSession, line_in: CreateLine):
+async def create_line(session: AsyncSession, line_in: CreateLine) -> Line:
     line = Line(**line_in.model_dump())
     session.add(line)
-    session.commit()
+    await session.commit()
     return line
 
 
-def get_line(session: AsyncSession, line_id: int) -> Line:
-    return session.get(Line, select(Line).where(Line.id == line_id))
+async def get_line(session: AsyncSession, line_id: int) -> Optional[SchemaLine]:
+    return await session.get(Line, line_id)
 
 
-def get_lines(session: AsyncSession) -> List[Line]:
+async def get_lines(session: AsyncSession) -> list[SchemaLine]:
     stmt = select(Line).order_by(Line.id)
-    result: Result = session.execute(stmt)
-    return result.scalars().all()
-
-
-def delete_line(session: AsyncSession, line_id: int):
-    stmt = delete(Line).where(Line.id == line_id)
-    session.execute(stmt)
-    session.commit()
-
+    result: Result = await session.execute(stmt)
+    return list(result.scalars().all())

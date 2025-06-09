@@ -1,12 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from .schema import CreateLine
-from .crud import create_line
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.database.db_helper import db_helper
+from .schema import CreatePassenger, Passenger
+from .crud import create_passenger, get_passengers
+
+router = APIRouter(tags=["Passenger"], prefix="/passenger")
 
 
-router = APIRouter(tags=["line"], prefix='line')
+@router.post("/", response_model=CreatePassenger)
+async def route_create_passenger(
+    passenger_in: CreatePassenger,
+    session: AsyncSession = Depends(db_helper.scoped_session_dependency),
+):
+    return await create_passenger(session=session, passenger_in=passenger_in)
 
 
-@router.post('/', response_model=CreateLine, status_code=status.HTTP_201_CREATED)
-def route_create_line(line: CreateLine, session: AsyncSession = Depends(get_db)):
-    return create_line(session, line)
-
+@router.get("/", response_model=list[Passenger])
+async def route_get_passengers(
+    session: AsyncSession = Depends(db_helper.scoped_session_dependency),
+):
+    return await get_passengers(session=session)

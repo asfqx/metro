@@ -1,27 +1,22 @@
+from sqlalchemy import select, Result
 from sqlalchemy.ext.asyncio import AsyncSession
-from api.line.schema import CreateLine, Line
-from sqlalchemy import select
+from core.models import Passenger
+from api.passenger.schema import Passenger as SchemaPassenger, CreatePassenger
 
 
-def create_passenger(session: AsyncSession, passenger_in: CreateLine):
-    line = Line(**line_in.model_dump())
-    session.add(line)
-    session.commit()
-    return line
+async def get_passengers(session: AsyncSession) -> list[SchemaPassenger]:
+    stmt = select(Passenger).order_by(Passenger.id)
+    result: Result = await session.execute(stmt)
+    return list(result.scalars().all())
 
 
-def get_line(session: AsyncSession, line_id: int) -> Line:
-    return session.get(Line, select(Line).where(Line.id == line_id))
-
-
-def get_lines(session: AsyncSession) -> List[Line]:
-    stmt = select(Line).order_by(Line.id)
-    result: Result = session.execute(stmt)
-    return result.scalars().all()
-
-
-def delete_line(session: AsyncSession, line_id: int):
-    stmt = delete(Line).where(Line.id == line_id)
-    session.execute(stmt)
-    session.commit()
-
+async def create_passenger(
+    passenger_in: CreatePassenger, session: AsyncSession
+) -> Passenger:
+    passenger = Passenger(**passenger_in.model_dump())
+    if passenger.current_station_id is None:
+        passenger.current_station_id = passenger.start_st_id
+    passenger.status = passenger.status.value
+    session.add(passenger)
+    await session.commit()
+    return passenger
