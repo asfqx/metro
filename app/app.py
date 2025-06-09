@@ -1,37 +1,42 @@
-import asyncio
 import json
 import random
 import dash
 import websockets
 from dash import dcc, html
 from dash.dependencies import Input, Output
-from httpx import AsyncClient
-
+from fastapi import Depends
 from .models.models import Train, Passenger
 from .models.metromodel import MetroModel
 
 
-async def websocket_client():
+async def connect_websocket():
     url = "ws://localhost:8081/ws"
     while True:
-        async with websockets.connect(url) as websocket:
+        async with websockets.connect(url) as websocket_session:
             status = {
-                "status": "get_update",
+                "status": "success connected",
             }
-            await websocket.send(json.dumps(status))
-            data = await websocket.recv()
-            return json.loads(data)
-
-    # Visualization setup
+            await websocket_session.send(json.dumps(status))
+            yield websocket_session
 
 
-async def get_server_data():
-    async with AsyncClient() as client:
-        data = await client.get("http://127.0.0.1:8081/api")
-        return json.dumps(data)
+async def websocket_get_update(session=Depends(connect_websocket)):
+    status = {
+        "status": "get_update",
+    }
+    await session.send(json.dumps(status))
+    data = await session.recv()
+    return json.loads(data)
 
 
-model = MetroModel(data=get_server_data())
+async def websocket_send_update(data, session=Depends(connect_websocket)):
+    status = {"status": "update"}
+    await session.send(json.dumps(status))
+    await session.send(json.dumps(data))
+    print("data successfully load to db")
+
+
+model = MetroModel(data=websocket_get_update())
 app = dash.Dash(__name__)
 app.layout = html.Div(
     [dcc.Graph(id="metro-map"), dcc.Interval(id="tick", interval=1000, n_intervals=0)]
@@ -39,11 +44,7 @@ app.layout = html.Div(
 
 
 @app.callback(Output("metro-map", "figure"), [Input("tick", "n_intervals")])
-def update_map(n):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    data = loop.run_until_complete(websocket_client())
-    model.update(data)
+async def update_map(n):
     # Collect station data
     station_data = []
     for line in model.lines.values():
@@ -175,7 +176,10 @@ def update_map(n):
             "yaxis": {"range": [-1, 6]},  # Adjust based on your coordinate system
         },
     }
-
+    data = {
+        "data": [model.trains, model.passengers, model.stations],
+    }
+    await websocket_send_update(data)
     return figure
 
 

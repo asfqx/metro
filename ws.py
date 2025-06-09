@@ -1,7 +1,5 @@
 from fastapi import APIRouter
 from starlette.websockets import WebSocket
-from sqlalchemy import select
-from api.train.crud import get_trains
 from httpx import AsyncClient
 import json
 
@@ -13,11 +11,13 @@ async def ws(websocket: WebSocket):
     await websocket.accept()
     while True:
         request = await websocket.receive_json()
-        if request["action"] == "get_data":
+        if request["action"] == "get_update":
             update_data = await update()
             await websocket.send_json(update_data)
-        elif request["action"] == "update_data":
+            print({"data": update_data})
+        elif request["action"] == "update":
             received_data = json.loads(request["data"])
+            print({"data": received_data})
 
 
 async def update():
